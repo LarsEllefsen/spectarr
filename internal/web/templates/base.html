@@ -1,0 +1,31 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spectarr</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+  <style>
+    body { max-width: 900px; margin: 0 auto; padding: 1rem 1.5rem; }
+    nav { margin-bottom: 2rem; display: flex; gap: 1.5rem; align-items: center; }
+    nav h1 { margin: 0; font-size: 1.4rem; flex: 1; }
+    nav a { font-weight: 500; }
+    .badge { display: inline-block; padding: .2em .6em; border-radius: .3em; font-size: .8rem; }
+    .badge-success { background: #2d6a4f; color: #fff; }
+    .badge-error   { background: #b5451b; color: #fff; }
+    .badge-info    { background: #1d6fa5; color: #fff; }
+    table { width: 100%; }
+    .error-row td { color: var(--pico-color-red-500, #c0392b); }
+  </style>
+</head>
+<body>
+  <nav>
+    <h1>📡 Spectarr</h1>
+    <a href="/">Dashboard</a>
+    <a href="/settings">Settings</a>
+  </nav>
+  {{block "content" .}}{{end}}
+</body>
+</html>
+{{end}}

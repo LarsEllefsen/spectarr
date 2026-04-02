@@ -1,0 +1,91 @@
+{{template "base" .}}
+{{define "content"}}
+<h2>Settings</h2>
+
+{{if .SavedMessage}}<p><span class="badge badge-success">{{.SavedMessage}}</span></p>{{end}}
+{{if .Error}}<p><span class="badge badge-error">{{.Error}}</span></p>{{end}}
+
+<form
+  hx-post="/settings"
+  hx-target="body"
+  hx-swap="outerHTML"
+>
+  <article>
+    <header><strong>Specto Account</strong></header>
+    <label>
+      Email
+      <input type="email" name="specto_email" value="{{index .Config "specto_email"}}" placeholder="you@example.com" required>
+    </label>
+    <label>
+      Password
+      <input type="password" name="specto_password" value="{{index .Config "specto_password"}}" placeholder="••••••••" required>
+    </label>
+  </article>
+
+  <article>
+    <header><strong>Rating Threshold</strong></header>
+    <label>
+      Minimum rating to add to Radarr (1–10)
+      <input type="number" name="rating_threshold"
+        value="{{index .Config "rating_threshold"}}"
+        min="1" max="10" step="0.1" required>
+    </label>
+  </article>
+
+  <article>
+    <header><strong>Radarr</strong></header>
+    <label>
+      Radarr URL
+      <input type="url" name="radarr_url" value="{{index .Config "radarr_url"}}" placeholder="http://localhost:7878" required>
+    </label>
+    <label>
+      API Key
+      <input type="text" name="radarr_api_key" value="{{index .Config "radarr_api_key"}}" placeholder="your-api-key" required>
+    </label>
+    <label>
+      Quality Profile ID
+      {{if .QualityProfiles}}
+      <select name="radarr_quality_profile_id">
+        {{$selected := index .Config "radarr_quality_profile_id"}}
+        {{range .QualityProfiles}}
+        <option value="{{.ID}}" {{if eq (printf "%d" .ID) $selected}}selected{{end}}>{{.Name}}</option>
+        {{end}}
+      </select>
+      {{else}}
+      <input type="number" name="radarr_quality_profile_id"
+        value="{{index .Config "radarr_quality_profile_id"}}"
+        placeholder="1" min="1">
+      <small>Save Radarr URL and API key first to load profiles.</small>
+      {{end}}
+    </label>
+    <label>
+      Root Folder Path
+      {{if .RootFolders}}
+      <select name="radarr_root_folder_path">
+        {{$selected := index .Config "radarr_root_folder_path"}}
+        {{range .RootFolders}}
+        <option value="{{.Path}}" {{if eq .Path $selected}}selected{{end}}>{{.Path}}</option>
+        {{end}}
+      </select>
+      {{else}}
+      <input type="text" name="radarr_root_folder_path"
+        value="{{index .Config "radarr_root_folder_path"}}"
+        placeholder="/movies">
+      <small>Save Radarr URL and API key first to load folders.</small>
+      {{end}}
+    </label>
+  </article>
+
+  <article>
+    <header><strong>Scheduler</strong></header>
+    <label>
+      Poll interval (minutes)
+      <input type="number" name="poll_interval_minutes"
+        value="{{index .Config "poll_interval_minutes"}}"
+        min="5" max="1440" required>
+    </label>
+  </article>
+
+  <button type="submit">Save Settings</button>
+</form>
+{{end}}

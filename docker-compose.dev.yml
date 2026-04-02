@@ -1,0 +1,10 @@
+services:
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-dev
+    ports:
+      - "7878:7878"
+    volumes:
+      - ./dev-data/radarr:/config
+    environment:
+      - TZ=Europe/Oslo

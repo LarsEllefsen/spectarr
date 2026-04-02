@@ -1,0 +1,46 @@
+{{template "base" .}}
+{{define "content"}}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+  <h2 style="margin:0;">Dashboard</h2>
+  <div style="display:flex; gap:.75rem; align-items:center;">
+    <span id="trigger-status"></span>
+    <button
+      hx-post="/run"
+      hx-target="#trigger-status"
+      hx-swap="innerHTML"
+      class="contrast outline"
+      style="margin:0;"
+    >Run Now</button>
+  </div>
+</div>
+
+<h3>Recent Sync Runs</h3>
+{{if .Logs}}
+<table>
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Movies Added</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Logs}}
+    <tr {{if .Error}}class="error-row"{{end}}>
+      <td>{{.RanAt}}</td>
+      <td>{{.MoviesAdded}}</td>
+      <td>
+        {{if .Error}}
+          <span class="badge badge-error">Error: {{.Error}}</span>
+        {{else}}
+          <span class="badge badge-success">OK</span>
+        {{end}}
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{else}}
+<p><em>No runs yet. Configure settings and click Run Now.</em></p>
+{{end}}
+{{end}}
