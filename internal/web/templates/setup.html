@@ -1,86 +1,140 @@
 {{define "setup.html"}}<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spectarr — Setup</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <style>
-    body { max-width: 560px; margin: 4rem auto; padding: 0 1.5rem; }
-    h1 { font-size: 1.6rem; margin-bottom: .25rem; }
-    .subtitle { color: var(--pico-muted-color); margin-bottom: 2rem; }
-    .badge-error { display:inline-block; padding:.2em .6em; border-radius:.3em; font-size:.8rem; background:#b5451b; color:#fff; margin-bottom:1rem; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .setup-card {
+      width: 100%;
+      max-width: 480px;
+    }
+    .setup-brand {
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--pico-muted-color);
+      margin-bottom: .5rem;
+    }
+    .setup-heading {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 .4rem;
+    }
+    .setup-sub {
+      color: var(--pico-muted-color);
+      font-size: .9rem;
+      margin-bottom: 2rem;
+    }
+    .toast-error {
+      display: inline-block;
+      padding: .3em .75em;
+      border-radius: 999px;
+      font-size: .78rem;
+      background: rgba(181,69,27,.3);
+      color: #eb8b6e;
+      margin-bottom: 1.25rem;
+    }
+    article {
+      background: var(--pico-card-background-color);
+      border: 1px solid var(--pico-muted-border-color);
+      border-radius: var(--pico-border-radius);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+    article header {
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--pico-muted-color);
+      margin-bottom: 1rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--pico-muted-border-color);
+    }
   </style>
 </head>
 <body>
-  <h1>📡 Welcome to Spectarr</h1>
-  <p class="subtitle">Connect your Specto and Radarr accounts to get started.</p>
+  <div class="setup-card">
+    <p class="setup-brand">Spectarr</p>
+    <h1 class="setup-heading">Welcome</h1>
+    <p class="setup-sub">Connect your accounts to get started.</p>
 
-  {{if .Error}}<span class="badge-error">{{.Error}}</span>{{end}}
+    {{if .Error}}<span class="toast-error">{{.Error}}</span>{{end}}
 
-  <form method="POST" action="/setup">
-    <article>
-      <header><strong>Specto Account</strong></header>
-      <label>
-        Email
-        <input type="email" name="specto_email" value="{{index .Config "specto_email"}}" placeholder="you@example.com" required>
-      </label>
-      <label>
-        Password
-        <input type="password" name="specto_password" placeholder="••••••••" required>
-      </label>
-    </article>
-
-    <article>
-      <header><strong>Radarr</strong></header>
-      <label>
-        URL
-        <input type="url" name="radarr_url" value="{{index .Config "radarr_url"}}" placeholder="http://localhost:7878" required>
-      </label>
-      <label>
-        API Key
-        <input type="text" name="radarr_api_key" placeholder="your-api-key" required>
-      </label>
-    </article>
-
-    <article>
-      <header><strong>Preferences</strong></header>
-      <label>
-        Minimum rating to sync (1–10)
-        <input type="number" name="rating_threshold"
-          value="{{index .Config "rating_threshold"}}"
-          min="1" max="10" step="0.1" required>
-      </label>
-      <fieldset>
-        <legend><small>Download behavior</small></legend>
+    <form method="POST" action="/setup">
+      <article>
+        <header>Specto Account</header>
         <label>
-          <input type="radio" name="download_mode" value="automatic"
-            {{if ne (index .Config "download_mode") "manual"}}checked{{end}}>
-          Automatic — add matching movies to Radarr immediately
+          Email
+          <input type="email" name="specto_email" value="{{index .Config "specto_email"}}" placeholder="you@example.com" required>
         </label>
         <label>
-          <input type="radio" name="download_mode" value="manual"
-            {{if eq (index .Config "download_mode") "manual"}}checked{{end}}>
-          Manual — queue matching movies for review on the dashboard
+          Password
+          <input type="password" name="specto_password" placeholder="••••••••" required>
         </label>
-      </fieldset>
-      <fieldset>
-        <legend><small>Sync source</small></legend>
-        <label>
-          <input type="radio" name="sync_mode" value="all_friends"
-            {{if ne (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
-          All friends
-        </label>
-        <label>
-          <input type="radio" name="sync_mode" value="selected_friends"
-            {{if eq (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
-          Selected friends <small>(configure in Settings after setup)</small>
-        </label>
-      </fieldset>
-    </article>
+      </article>
 
-    <button type="submit">Get Started</button>
-  </form>
+      <article>
+        <header>Radarr</header>
+        <label>
+          URL
+          <input type="url" name="radarr_url" value="{{index .Config "radarr_url"}}" placeholder="http://localhost:7878" required>
+        </label>
+        <label>
+          API Key
+          <input type="text" name="radarr_api_key" placeholder="your-api-key" required>
+        </label>
+      </article>
+
+      <article>
+        <header>Preferences</header>
+        <label>
+          Minimum rating to sync <small>(1–10)</small>
+          <input type="number" name="rating_threshold" value="{{index .Config "rating_threshold"}}" min="1" max="10" step="0.1" required>
+        </label>
+        <fieldset style="margin-bottom:1rem;">
+          <legend><small>Download behavior</small></legend>
+          <label>
+            <input type="radio" name="download_mode" value="automatic"
+              {{if ne (index .Config "download_mode") "manual"}}checked{{end}}>
+            Automatic
+          </label>
+          <label>
+            <input type="radio" name="download_mode" value="manual"
+              {{if eq (index .Config "download_mode") "manual"}}checked{{end}}>
+            Manual review
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend><small>Sync source</small></legend>
+          <label>
+            <input type="radio" name="sync_mode" value="all_friends"
+              {{if ne (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
+            All friends
+          </label>
+          <label>
+            <input type="radio" name="sync_mode" value="selected_friends"
+              {{if eq (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
+            Selected friends <small style="color:var(--pico-muted-color);">(configure after setup)</small>
+          </label>
+        </fieldset>
+      </article>
+
+      <button type="submit" style="width:100%;">Get Started</button>
+    </form>
+  </div>
 </body>
 </html>
 {{end}}

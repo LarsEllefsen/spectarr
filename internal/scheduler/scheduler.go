@@ -111,6 +111,7 @@ func (s *Scheduler) run() (int, error) {
 		return 0, err
 	}
 
+
 	rc := radarr.New(radarrURL, radarrKey)
 	monitored, err := rc.GetMonitoredTmdbIDs()
 	if err != nil {
@@ -125,7 +126,7 @@ func (s *Scheduler) run() (int, error) {
 	downloadMode := cfg["download_mode"]
 	added := 0
 	for _, r := range ratings {
-		if r.Rating < threshold {
+		if r.Rating.Rating < threshold {
 			continue
 		}
 		if _, exists := monitored[r.TmdbID]; exists {
@@ -135,15 +136,15 @@ func (s *Scheduler) run() (int, error) {
 			continue
 		}
 		if downloadMode == "manual" {
-			title, year, err := rc.LookupByTmdbID(r.TmdbID)
+			info, err := rc.LookupByTmdbID(r.TmdbID)
 			if err != nil {
 				log.Printf("scheduler: lookup tmdb %d: %v", r.TmdbID, err)
 				continue
 			}
-			if err := s.store.AddPendingMovie(r.TmdbID, title, year, r.Rating); err != nil {
+			if err := s.store.AddPendingMovie(r.TmdbID, info.Title, info.Year, r.Rating.Rating, info.PosterURL, info.ImdbID, r.SuggestedBy); err != nil {
 				log.Printf("scheduler: queue pending tmdb %d: %v", r.TmdbID, err)
 			} else {
-				log.Printf("scheduler: queued %q (tmdb %d, rating %.1f) for manual review", title, r.TmdbID, r.Rating)
+				log.Printf("scheduler: queued %q (tmdb %d, rating %.1f) for manual review", info.Title, r.TmdbID, r.Rating.Rating)
 			}
 		} else {
 			title, err := rc.AddMovie(r.TmdbID, qualityProfileID, rootFolder)
@@ -151,57 +152,75 @@ func (s *Scheduler) run() (int, error) {
 				log.Printf("scheduler: add tmdb %d: %v", r.TmdbID, err)
 				continue
 			}
-			log.Printf("scheduler: added %q (tmdb %d, rating %.1f)", title, r.TmdbID, r.Rating)
+			log.Printf("scheduler: added %q (tmdb %d, rating %.1f)", title, r.TmdbID, r.Rating.Rating)
 			added++
 		}
 	}
 	return added, nil
 }
 
+// attributedRating is a rating with the name of the friend who triggered it.
+type attributedRating struct {
+	specto.Rating
+	SuggestedBy string
+}
+
 // collectRatings returns deduplicated ratings from the configured sync source.
 // When multiple sources rate the same movie, the highest rating is kept.
-func (s *Scheduler) collectRatings(sc *specto.Client, cfg map[string]string) ([]specto.Rating, error) {
+func (s *Scheduler) collectRatings(sc *specto.Client, cfg map[string]string) ([]attributedRating, error) {
+	friends, err := sc.GetFriends()
+	if err != nil {
+		return nil, fmt.Errorf("fetch friends: %w", err)
+	}
+
 	if cfg["sync_mode"] == "selected_friends" {
 		raw := strings.TrimSpace(cfg["selected_friend_ids"])
 		if raw == "" {
 			return nil, nil
 		}
-		return fetchAndMerge(sc, strings.Split(raw, ","))
+		selected := make(map[string]bool)
+		for _, id := range strings.Split(raw, ",") {
+			selected[strings.TrimSpace(id)] = true
+		}
+		var filtered []specto.Friend
+		for _, f := range friends {
+			if selected[f.ID] {
+				filtered = append(filtered, f)
+			}
+		}
+		friends = filtered
 	}
 
-	// default: all_friends
-	friends, err := sc.GetFriends()
-	if err != nil {
-		return nil, fmt.Errorf("fetch friends: %w", err)
-	}
-	ids := make([]string, len(friends))
-	for i, f := range friends {
-		ids[i] = f.ID
-	}
-	return fetchAndMerge(sc, ids)
+	return fetchAndMerge(sc, friends)
 }
 
-// fetchAndMerge fetches ratings for each user ID and deduplicates by TmdbID,
+// fetchAndMerge fetches ratings for each friend and deduplicates by TmdbID,
 // keeping the highest rating seen across all sources.
-func fetchAndMerge(sc *specto.Client, userIDs []string) ([]specto.Rating, error) {
-	log.Printf("scheduler: fetch ratings for users")
-	best := make(map[int]specto.Rating)
-	for _, id := range userIDs {
-		log.Printf("scheduler: fetch ratings for user %s", id)
-		ratings, err := sc.GetMovieRatingsByUser(strings.TrimSpace(id))
+func fetchAndMerge(sc *specto.Client, friends []specto.Friend) ([]attributedRating, error) {
+	type entry struct {
+		rating      specto.Rating
+		suggestedBy string
+	}
+	best := make(map[int]entry)
+	for _, f := range friends {
+		ratings, err := sc.GetMovieRatingsByUser(f.ID)
 		if err != nil {
-			log.Printf("scheduler: fetch ratings for user %s: %v", id, err)
+			log.Printf("scheduler: fetch ratings for user %s: %v", f.ID, err)
 			continue
 		}
+		name := f.FullName
+		if name == "" {
+			name = f.Username
+		}
 		for _, r := range ratings {
-			if existing, ok := best[r.TmdbID]; !ok || r.Rating > existing.Rating {
-				best[r.TmdbID] = r
+			if e, ok := best[r.TmdbID]; !ok || r.Rating > e.rating.Rating {
+				best[r.TmdbID] = entry{rating: r, suggestedBy: name}
 			}
 		}
 	}
-	result := make([]specto.Rating, 0, len(best))
-	for _, r := range best {
-		result = append(result, r)
+	result := make([]attributedRating, 0, len(best))
+	for _, e := range best {
+		result = append(result, attributedRating{Rating: e.rating, SuggestedBy: e.suggestedBy})
 	}
 	return result, nil
 }

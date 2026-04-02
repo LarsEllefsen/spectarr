@@ -81,6 +81,7 @@ type lookupMovie struct {
 	Title  string `json:"title"`
 	Year   int    `json:"year"`
 	TmdbID int    `json:"tmdbId"`
+	ImdbID string `json:"imdbId"`
 	Images []struct {
 		CoverType string `json:"coverType"`
 		RemoteURL string `json:"remoteUrl"`
@@ -105,13 +106,28 @@ type addOptions struct {
 	SearchForMovie bool `json:"searchForMovie"`
 }
 
-// LookupByTmdbID returns the title and release year for a TMDB ID without adding it to Radarr.
-func (c *Client) LookupByTmdbID(tmdbID int) (title string, year int, err error) {
+// LookupResult holds metadata returned by a TMDB lookup without adding to Radarr.
+type LookupResult struct {
+	Title     string
+	Year      int
+	PosterURL string
+	ImdbID    string
+}
+
+// LookupByTmdbID returns metadata for a TMDB ID without adding it to Radarr.
+func (c *Client) LookupByTmdbID(tmdbID int) (LookupResult, error) {
 	var m lookupMovie
-	if err = c.do(http.MethodGet, fmt.Sprintf("/movie/lookup/tmdb?tmdbId=%d", tmdbID), nil, &m); err != nil {
-		return "", 0, fmt.Errorf("lookup tmdb %d: %w", tmdbID, err)
+	if err := c.do(http.MethodGet, fmt.Sprintf("/movie/lookup/tmdb?tmdbId=%d", tmdbID), nil, &m); err != nil {
+		return LookupResult{}, fmt.Errorf("lookup tmdb %d: %w", tmdbID, err)
 	}
-	return m.Title, m.Year, nil
+	var posterURL string
+	for _, img := range m.Images {
+		if img.CoverType == "poster" {
+			posterURL = img.RemoteURL
+			break
+		}
+	}
+	return LookupResult{Title: m.Title, Year: m.Year, PosterURL: posterURL, ImdbID: m.ImdbID}, nil
 }
 
 // AddMovie adds a movie to Radarr by TMDB ID. Returns the movie title.

@@ -1,17 +1,15 @@
 {{template "base" .}}
 {{define "content"}}
-<h2>Settings</h2>
+<div class="page-header">
+  <h2>Settings</h2>
+  {{if .SavedMessage}}<span class="badge badge-ok">{{.SavedMessage}}</span>{{end}}
+  {{if .Error}}<span class="badge badge-error">{{.Error}}</span>{{end}}
+</div>
 
-{{if .SavedMessage}}<p><span class="badge badge-success">{{.SavedMessage}}</span></p>{{end}}
-{{if .Error}}<p><span class="badge badge-error">{{.Error}}</span></p>{{end}}
+<form hx-post="/settings" hx-target="body" hx-swap="outerHTML">
 
-<form
-  hx-post="/settings"
-  hx-target="body"
-  hx-swap="outerHTML"
->
   <article>
-    <header><strong>Specto Account</strong></header>
+    <header>Specto Account</header>
     <label>
       Email
       <input type="email" name="specto_email" value="{{index .Config "specto_email"}}" placeholder="you@example.com" required>
@@ -23,78 +21,74 @@
   </article>
 
   <article>
-    <header><strong>Rating Threshold</strong></header>
+    <header>Radarr</header>
     <label>
-      Minimum rating to add to Radarr (1–10)
-      <input type="number" name="rating_threshold"
-        value="{{index .Config "rating_threshold"}}"
-        min="1" max="10" step="0.1" required>
-    </label>
-  </article>
-
-  <article>
-    <header><strong>Radarr</strong></header>
-    <label>
-      Radarr URL
+      URL
       <input type="url" name="radarr_url" value="{{index .Config "radarr_url"}}" placeholder="http://localhost:7878" required>
     </label>
     <label>
       API Key
       <input type="text" name="radarr_api_key" value="{{index .Config "radarr_api_key"}}" placeholder="your-api-key" required>
     </label>
-    <label>
-      Quality Profile ID
-      {{if .QualityProfiles}}
-      <select name="radarr_quality_profile_id">
-        {{$selected := index .Config "radarr_quality_profile_id"}}
-        {{range .QualityProfiles}}
-        <option value="{{.ID}}" {{if eq (printf "%d" .ID) $selected}}selected{{end}}>{{.Name}}</option>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+      <label>
+        Quality Profile
+        {{if .QualityProfiles}}
+        <select name="radarr_quality_profile_id">
+          {{$selected := index .Config "radarr_quality_profile_id"}}
+          {{range .QualityProfiles}}
+          <option value="{{.ID}}" {{if eq (printf "%d" .ID) $selected}}selected{{end}}>{{.Name}}</option>
+          {{end}}
+        </select>
+        {{else}}
+        <input type="number" name="radarr_quality_profile_id" value="{{index .Config "radarr_quality_profile_id"}}" placeholder="1" min="1">
+        <small>Save URL and key first to load profiles.</small>
         {{end}}
-      </select>
-      {{else}}
-      <input type="number" name="radarr_quality_profile_id"
-        value="{{index .Config "radarr_quality_profile_id"}}"
-        placeholder="1" min="1">
-      <small>Save Radarr URL and API key first to load profiles.</small>
-      {{end}}
-    </label>
-    <label>
-      Root Folder Path
-      {{if .RootFolders}}
-      <select name="radarr_root_folder_path">
-        {{$selected := index .Config "radarr_root_folder_path"}}
-        {{range .RootFolders}}
-        <option value="{{.Path}}" {{if eq .Path $selected}}selected{{end}}>{{.Path}}</option>
+      </label>
+      <label>
+        Root Folder
+        {{if .RootFolders}}
+        <select name="radarr_root_folder_path">
+          {{$selected := index .Config "radarr_root_folder_path"}}
+          {{range .RootFolders}}
+          <option value="{{.Path}}" {{if eq .Path $selected}}selected{{end}}>{{.Path}}</option>
+          {{end}}
+        </select>
+        {{else}}
+        <input type="text" name="radarr_root_folder_path" value="{{index .Config "radarr_root_folder_path"}}" placeholder="/movies">
+        <small>Save URL and key first to load folders.</small>
         {{end}}
-      </select>
-      {{else}}
-      <input type="text" name="radarr_root_folder_path"
-        value="{{index .Config "radarr_root_folder_path"}}"
-        placeholder="/movies">
-      <small>Save Radarr URL and API key first to load folders.</small>
-      {{end}}
-    </label>
+      </label>
+    </div>
   </article>
 
   <article>
-    <header><strong>Download Behavior</strong></header>
-    <fieldset>
+    <header>Sync</header>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+      <label>
+        Rating threshold
+        <input type="number" name="rating_threshold" value="{{index .Config "rating_threshold"}}" min="1" max="10" step="0.1" required>
+      </label>
+      <label>
+        Poll interval <small>(minutes)</small>
+        <input type="number" name="poll_interval_minutes" value="{{index .Config "poll_interval_minutes"}}" min="5" max="1440" required>
+      </label>
+    </div>
+    <fieldset style="margin-bottom:1rem;">
+      <legend><small>Download behavior</small></legend>
       <label>
         <input type="radio" name="download_mode" value="automatic"
           {{if ne (index .Config "download_mode") "manual"}}checked{{end}}>
-        Automatic — add matching movies to Radarr immediately
+        Automatic
       </label>
       <label>
         <input type="radio" name="download_mode" value="manual"
           {{if eq (index .Config "download_mode") "manual"}}checked{{end}}>
-        Manual — queue matching movies for review on the dashboard
+        Manual review
       </label>
     </fieldset>
-  </article>
-
-  <article>
-    <header><strong>Sync Source</strong></header>
     <fieldset>
+      <legend><small>Sync source</small></legend>
       <label>
         <input type="radio" name="sync_mode" value="all_friends"
           {{if ne (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
@@ -106,38 +100,29 @@
         Selected friends
       </label>
     </fieldset>
-
     <div id="friends-list" {{if ne (index .Config "sync_mode") "selected_friends"}}style="display:none"{{end}}>
       {{if .Friends}}
+        <div style="margin-top:.75rem; display:flex; flex-direction:column; gap:.25rem;">
         {{range .Friends}}
-        <label>
+        <label style="margin:0;">
           <input type="checkbox" name="selected_friend_ids" value="{{.ID}}"
             {{if index $.SelectedFriendIDs .ID}}checked{{end}}>
-          {{.FullName}} (@{{.Username}})
+          {{.FullName}} <span style="color:var(--pico-muted-color);">@{{.Username}}</span>
         </label>
         {{end}}
+        </div>
       {{else}}
-        <small>Save Specto credentials first to load your friends list.</small>
+        <small style="color:var(--pico-muted-color);">Save Specto credentials first to load your friends list.</small>
       {{end}}
     </div>
   </article>
 
-  <article>
-    <header><strong>Scheduler</strong></header>
-    <label>
-      Poll interval (minutes)
-      <input type="number" name="poll_interval_minutes"
-        value="{{index .Config "poll_interval_minutes"}}"
-        min="5" max="1440" required>
-    </label>
-  </article>
-
-  <button type="submit">Save Settings</button>
+  <button type="submit" style="margin-top:.5rem;">Save Settings</button>
 </form>
 
 <script>
-  document.querySelectorAll('input[name="sync_mode"]').forEach(function(radio) {
-    radio.addEventListener('change', function() {
+  document.querySelectorAll('input[name="sync_mode"]').forEach(function(r) {
+    r.addEventListener('change', function() {
       document.getElementById('friends-list').style.display =
         this.value === 'selected_friends' ? '' : 'none';
     });

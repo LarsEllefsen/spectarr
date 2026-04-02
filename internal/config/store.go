@@ -22,12 +22,15 @@ CREATE TABLE IF NOT EXISTS run_log (
 );
 
 CREATE TABLE IF NOT EXISTS pending_movies (
-	id       INTEGER PRIMARY KEY AUTOINCREMENT,
-	tmdb_id  INTEGER NOT NULL UNIQUE,
-	title    TEXT NOT NULL,
-	year     INTEGER NOT NULL DEFAULT 0,
-	rating   REAL NOT NULL,
-	added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	id           INTEGER PRIMARY KEY AUTOINCREMENT,
+	tmdb_id      INTEGER NOT NULL UNIQUE,
+	title        TEXT NOT NULL,
+	year         INTEGER NOT NULL DEFAULT 0,
+	rating       REAL NOT NULL,
+	poster_url   TEXT NOT NULL DEFAULT '',
+	imdb_id      TEXT NOT NULL DEFAULT '',
+	suggested_by TEXT NOT NULL DEFAULT '',
+	added_at     DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS rejected_movies (
@@ -76,6 +79,10 @@ func Open(path, dataDir string) (*Store, error) {
 	if _, err := db.Exec(schema); err != nil {
 		return nil, fmt.Errorf("migrate schema: %w", err)
 	}
+	// Migrations: ignore errors for columns that already exist.
+	db.Exec(`ALTER TABLE pending_movies ADD COLUMN poster_url TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE pending_movies ADD COLUMN imdb_id TEXT NOT NULL DEFAULT ''`)
+	db.Exec(`ALTER TABLE pending_movies ADD COLUMN suggested_by TEXT NOT NULL DEFAULT ''`)
 	s := &Store{db: db, key: key}
 	if err := s.seedDefaults(); err != nil {
 		return nil, err
@@ -212,25 +219,29 @@ func (s *Store) Close() error {
 
 // PendingMovie is a movie queued for manual review before adding to Radarr.
 type PendingMovie struct {
-	ID      int64
-	TmdbID  int
-	Title   string
-	Year    int
-	Rating  float64
-	AddedAt string
+	ID          int64
+	TmdbID      int
+	Title       string
+	Year        int
+	Rating      float64
+	PosterURL   string
+	ImdbID      string
+	SuggestedBy string
+	AddedAt     string
 }
 
-func (s *Store) AddPendingMovie(tmdbID int, title string, year int, rating float64) error {
+func (s *Store) AddPendingMovie(tmdbID int, title string, year int, rating float64, posterURL, imdbID, suggestedBy string) error {
 	_, err := s.db.Exec(
-		`INSERT OR IGNORE INTO pending_movies (tmdb_id, title, year, rating) VALUES (?, ?, ?, ?)`,
-		tmdbID, title, year, rating,
+		`INSERT OR IGNORE INTO pending_movies (tmdb_id, title, year, rating, poster_url, imdb_id, suggested_by)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		tmdbID, title, year, rating, posterURL, imdbID, suggestedBy,
 	)
 	return err
 }
 
 func (s *Store) GetPendingMovies() ([]PendingMovie, error) {
 	rows, err := s.db.Query(
-		`SELECT id, tmdb_id, title, year, rating, datetime(added_at, 'localtime')
+		`SELECT id, tmdb_id, title, year, rating, poster_url, imdb_id, suggested_by, datetime(added_at, 'localtime')
 		 FROM pending_movies ORDER BY added_at DESC`,
 	)
 	if err != nil {
@@ -240,7 +251,7 @@ func (s *Store) GetPendingMovies() ([]PendingMovie, error) {
 	var movies []PendingMovie
 	for rows.Next() {
 		var m PendingMovie
-		rows.Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.AddedAt)
+		rows.Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.PosterURL, &m.ImdbID, &m.SuggestedBy, &m.AddedAt)
 		movies = append(movies, m)
 	}
 	return movies, nil
@@ -249,9 +260,9 @@ func (s *Store) GetPendingMovies() ([]PendingMovie, error) {
 func (s *Store) GetPendingMovie(id int64) (PendingMovie, error) {
 	var m PendingMovie
 	err := s.db.QueryRow(
-		`SELECT id, tmdb_id, title, year, rating, datetime(added_at, 'localtime')
+		`SELECT id, tmdb_id, title, year, rating, poster_url, imdb_id, suggested_by, datetime(added_at, 'localtime')
 		 FROM pending_movies WHERE id = ?`, id,
-	).Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.AddedAt)
+	).Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.PosterURL, &m.ImdbID, &m.SuggestedBy, &m.AddedAt)
 	return m, err
 }
 
