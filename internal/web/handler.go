@@ -29,13 +29,31 @@ func NewHandler(store *config.Store, sched *scheduler.Scheduler) (*Handler, erro
 
 func (h *Handler) Routes() http.Handler {
 	r := chi.NewRouter()
-	r.Get("/", h.dashboard)
-	r.Get("/settings", h.settingsPage)
-	r.Post("/settings", h.saveSettings)
-	r.Post("/run", h.triggerRun)
-	r.Post("/movies/{id}/accept", h.acceptMovie)
-	r.Post("/movies/{id}/reject", h.rejectMovie)
+
+	r.Get("/setup", h.setupPage)
+	r.Post("/setup", h.saveSetup)
+
+	r.Group(func(r chi.Router) {
+		r.Use(h.requireSetup)
+		r.Get("/", h.dashboard)
+		r.Get("/settings", h.settingsPage)
+		r.Post("/settings", h.saveSettings)
+		r.Post("/run", h.triggerRun)
+		r.Post("/movies/{id}/accept", h.acceptMovie)
+		r.Post("/movies/{id}/reject", h.rejectMovie)
+	})
+
 	return r
+}
+
+func (h *Handler) requireSetup(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.store.Get("specto_email") == "" || h.store.Get("radarr_url") == "" || h.store.Get("radarr_api_key") == "" {
+			http.Redirect(w, r, "/setup", http.StatusSeeOther)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- Dashboard ----
@@ -55,6 +73,56 @@ func (h *Handler) dashboard(w http.ResponseWriter, r *http.Request) {
 		log.Printf("web: fetch pending movies: %v", err)
 	}
 	h.render(w, "index.html", dashboardData{Logs: logs, PendingMovies: pending})
+}
+
+// ---- Setup ----
+
+type setupData struct {
+	Config map[string]string
+	Error  string
+}
+
+func (h *Handler) setupPage(w http.ResponseWriter, r *http.Request) {
+	// If already configured, redirect to dashboard.
+	if h.store.Get("specto_email") != "" && h.store.Get("radarr_url") != "" && h.store.Get("radarr_api_key") != "" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	h.renderSetup(w, setupData{Config: h.store.GetAll()})
+}
+
+func (h *Handler) saveSetup(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		h.renderSetup(w, setupData{Config: h.store.GetAll(), Error: "Invalid form data"})
+		return
+	}
+	fields := []string{
+		"specto_email", "specto_password",
+		"radarr_url", "radarr_api_key",
+		"rating_threshold",
+		"download_mode",
+		"sync_mode",
+	}
+	for _, f := range fields {
+		if err := h.store.Set(f, r.FormValue(f)); err != nil {
+			h.renderSetup(w, setupData{Config: h.store.GetAll(), Error: "Save failed: " + err.Error()})
+			return
+		}
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handler) renderSetup(w http.ResponseWriter, data setupData) {
+	tmpl, err := template.ParseFS(templateFS, "templates/setup.html")
+	if err != nil {
+		log.Printf("web: parse setup.html: %v", err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.ExecuteTemplate(w, "setup.html", data); err != nil {
+		log.Printf("web: render setup.html: %v", err)
+	}
 }
 
 // ---- Settings ----

@@ -6,5 +6,6 @@ services:
       - "7878:7878"
     volumes:
       - ./dev-data/radarr:/config
+      - ./dev-data/movies:/movies
     environment:
       - TZ=Europe/Oslo
