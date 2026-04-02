@@ -19,15 +19,10 @@ var templateFS embed.FS
 type Handler struct {
 	store     *config.Store
 	scheduler *scheduler.Scheduler
-	tmpl      *template.Template
 }
 
 func NewHandler(store *config.Store, sched *scheduler.Scheduler) (*Handler, error) {
-	tmpl, err := template.ParseFS(templateFS, "templates/*.html")
-	if err != nil {
-		return nil, err
-	}
-	return &Handler{store: store, scheduler: sched, tmpl: tmpl}, nil
+	return &Handler{store: store, scheduler: sched}, nil
 }
 
 func (h *Handler) Routes() http.Handler {
@@ -129,8 +124,14 @@ func (h *Handler) triggerRun(w http.ResponseWriter, r *http.Request) {
 // ---- helpers ----
 
 func (h *Handler) render(w http.ResponseWriter, name string, data any) {
+	tmpl, err := template.ParseFS(templateFS, "templates/base.html", "templates/"+name)
+	if err != nil {
+		log.Printf("web: parse %s: %v", name, err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := h.tmpl.ExecuteTemplate(w, name, data); err != nil {
+	if err := tmpl.ExecuteTemplate(w, name, data); err != nil {
 		log.Printf("web: render %s: %v", name, err)
 		http.Error(w, "render error", http.StatusInternalServerError)
 	}
