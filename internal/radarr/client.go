@@ -105,6 +105,18 @@ type addOptions struct {
 	SearchForMovie bool `json:"searchForMovie"`
 }
 
+// LookupByTmdbID returns the title and release year for a TMDB ID without adding it to Radarr.
+func (c *Client) LookupByTmdbID(tmdbID int) (title string, year int, err error) {
+	var results []lookupMovie
+	if err = c.do(http.MethodGet, fmt.Sprintf("/movie/lookup/tmdb?tmdbId=%d", tmdbID), nil, &results); err != nil {
+		return "", 0, fmt.Errorf("lookup tmdb %d: %w", tmdbID, err)
+	}
+	if len(results) == 0 {
+		return "", 0, fmt.Errorf("tmdb id %d not found in Radarr lookup", tmdbID)
+	}
+	return results[0].Title, results[0].Year, nil
+}
+
 // AddMovie adds a movie to Radarr by TMDB ID. Returns the movie title.
 func (c *Client) AddMovie(tmdbID, qualityProfileID int, rootFolderPath string) (string, error) {
 	var results []lookupMovie

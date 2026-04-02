@@ -77,6 +77,52 @@
   </article>
 
   <article>
+    <header><strong>Download Behavior</strong></header>
+    <fieldset>
+      <label>
+        <input type="radio" name="download_mode" value="automatic"
+          {{if ne (index .Config "download_mode") "manual"}}checked{{end}}>
+        Automatic — add matching movies to Radarr immediately
+      </label>
+      <label>
+        <input type="radio" name="download_mode" value="manual"
+          {{if eq (index .Config "download_mode") "manual"}}checked{{end}}>
+        Manual — queue matching movies for review on the dashboard
+      </label>
+    </fieldset>
+  </article>
+
+  <article>
+    <header><strong>Sync Source</strong></header>
+    <fieldset>
+      <label>
+        <input type="radio" name="sync_mode" value="all_friends"
+          {{if ne (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
+        All friends
+      </label>
+      <label>
+        <input type="radio" name="sync_mode" value="selected_friends"
+          {{if eq (index .Config "sync_mode") "selected_friends"}}checked{{end}}>
+        Selected friends
+      </label>
+    </fieldset>
+
+    <div id="friends-list" {{if ne (index .Config "sync_mode") "selected_friends"}}style="display:none"{{end}}>
+      {{if .Friends}}
+        {{range .Friends}}
+        <label>
+          <input type="checkbox" name="selected_friend_ids" value="{{.ID}}"
+            {{if index $.SelectedFriendIDs .ID}}checked{{end}}>
+          {{.FullName}} (@{{.Username}})
+        </label>
+        {{end}}
+      {{else}}
+        <small>Save Specto credentials first to load your friends list.</small>
+      {{end}}
+    </div>
+  </article>
+
+  <article>
     <header><strong>Scheduler</strong></header>
     <label>
       Poll interval (minutes)
@@ -88,4 +134,13 @@
 
   <button type="submit">Save Settings</button>
 </form>
+
+<script>
+  document.querySelectorAll('input[name="sync_mode"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      document.getElementById('friends-list').style.display =
+        this.value === 'selected_friends' ? '' : 'none';
+    });
+  });
+</script>
 {{end}}

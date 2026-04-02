@@ -20,6 +20,20 @@ CREATE TABLE IF NOT EXISTS run_log (
 	movies_added INTEGER NOT NULL DEFAULT 0,
 	error        TEXT
 );
+
+CREATE TABLE IF NOT EXISTS pending_movies (
+	id       INTEGER PRIMARY KEY AUTOINCREMENT,
+	tmdb_id  INTEGER NOT NULL UNIQUE,
+	title    TEXT NOT NULL,
+	year     INTEGER NOT NULL DEFAULT 0,
+	rating   REAL NOT NULL,
+	added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS rejected_movies (
+	tmdb_id     INTEGER PRIMARY KEY,
+	rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 `
 
 var defaults = map[string]string{
@@ -31,6 +45,9 @@ var defaults = map[string]string{
 	"radarr_quality_profile_id": "1",
 	"radarr_root_folder_path":   "/movies",
 	"poll_interval_minutes":     "60",
+	"sync_mode":                 "all_friends",
+	"selected_friend_ids":       "",
+	"download_mode":             "automatic",
 }
 
 // sensitiveKeys are encrypted at rest in SQLite.
@@ -191,4 +208,79 @@ func (s *Store) RecentRunLogs(limit int) ([]RunLog, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// PendingMovie is a movie queued for manual review before adding to Radarr.
+type PendingMovie struct {
+	ID      int64
+	TmdbID  int
+	Title   string
+	Year    int
+	Rating  float64
+	AddedAt string
+}
+
+func (s *Store) AddPendingMovie(tmdbID int, title string, year int, rating float64) error {
+	_, err := s.db.Exec(
+		`INSERT OR IGNORE INTO pending_movies (tmdb_id, title, year, rating) VALUES (?, ?, ?, ?)`,
+		tmdbID, title, year, rating,
+	)
+	return err
+}
+
+func (s *Store) GetPendingMovies() ([]PendingMovie, error) {
+	rows, err := s.db.Query(
+		`SELECT id, tmdb_id, title, year, rating, datetime(added_at, 'localtime')
+		 FROM pending_movies ORDER BY added_at DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var movies []PendingMovie
+	for rows.Next() {
+		var m PendingMovie
+		rows.Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.AddedAt)
+		movies = append(movies, m)
+	}
+	return movies, nil
+}
+
+func (s *Store) GetPendingMovie(id int64) (PendingMovie, error) {
+	var m PendingMovie
+	err := s.db.QueryRow(
+		`SELECT id, tmdb_id, title, year, rating, datetime(added_at, 'localtime')
+		 FROM pending_movies WHERE id = ?`, id,
+	).Scan(&m.ID, &m.TmdbID, &m.Title, &m.Year, &m.Rating, &m.AddedAt)
+	return m, err
+}
+
+func (s *Store) RemovePendingMovie(id int64) error {
+	_, err := s.db.Exec(`DELETE FROM pending_movies WHERE id = ?`, id)
+	return err
+}
+
+func (s *Store) RejectMovie(id int64) error {
+	_, err := s.db.Exec(`
+		INSERT OR IGNORE INTO rejected_movies (tmdb_id)
+		SELECT tmdb_id FROM pending_movies WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	return s.RemovePendingMovie(id)
+}
+
+func (s *Store) GetRejectedTmdbIDs() (map[int]struct{}, error) {
+	rows, err := s.db.Query(`SELECT tmdb_id FROM rejected_movies`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := make(map[int]struct{})
+	for rows.Next() {
+		var id int
+		rows.Scan(&id)
+		ids[id] = struct{}{}
+	}
+	return ids, nil
 }

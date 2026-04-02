@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -106,21 +107,54 @@ type Rating struct {
 	Review    string  `json:"review"`
 }
 
+func (r *Rating) UnmarshalJSON(data []byte) error {
+	type raw struct {
+		ID        string          `json:"id"`
+		TmdbID    int             `json:"tmdbId"`
+		MediaType string          `json:"mediaType"`
+		Rating    json.RawMessage `json:"rating"`
+		Review    string          `json:"review"`
+	}
+	var v raw
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	r.ID = v.ID
+	r.TmdbID = v.TmdbID
+	r.MediaType = v.MediaType
+	r.Review = v.Review
+
+	// rating may be a number or a quoted string
+	var f float64
+	if err := json.Unmarshal(v.Rating, &f); err != nil {
+		var s string
+		if err2 := json.Unmarshal(v.Rating, &s); err2 != nil {
+			return err
+		}
+		f, err = strconv.ParseFloat(s, 64)
+		if err != nil {
+			return err
+		}
+	}
+	r.Rating = f
+	return nil
+}
+
 type ratingsPage struct {
-	Data []Rating `json:"data"`
+	Data []Rating `json:"ratings"`
 	Pagination struct {
 		Page       int `json:"page"`
 		TotalPages int `json:"totalPages"`
 	} `json:"pagination"`
 }
 
-// GetMovieRatings fetches all MOVIE ratings for the authenticated user.
-func (c *Client) GetMovieRatings() ([]Rating, error) {
+// GetMovieRatingsByUser fetches all MOVIE ratings for the given user ID.
+func (c *Client) GetMovieRatingsByUser(userID string) ([]Rating, error) {
 	var all []Rating
 	page := 1
 	for {
 		var rp ratingsPage
-		path := fmt.Sprintf("/ratings?page=%d&limit=50", page)
+		path := fmt.Sprintf("/ratings?userId=%s&page=%d&limit=50", userID, page)
 		if err := c.get(path, &rp); err != nil {
 			return nil, err
 		}
@@ -135,4 +169,19 @@ func (c *Client) GetMovieRatings() ([]Rating, error) {
 		page++
 	}
 	return all, nil
+}
+
+type Friend struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	FullName string `json:"fullName"`
+}
+
+// GetFriends fetches the authenticated user's accepted friends list.
+func (c *Client) GetFriends() ([]Friend, error) {
+	var friends []Friend
+	if err := c.get("/friends", &friends); err != nil {
+		return nil, err
+	}
+	return friends, nil
 }

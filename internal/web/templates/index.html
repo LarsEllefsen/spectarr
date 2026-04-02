@@ -14,6 +14,8 @@
   </div>
 </div>
 
+{{template "pending-section" .}}
+
 <h3>Recent Sync Runs</h3>
 {{if .Logs}}
 <table>
@@ -43,4 +45,48 @@
 {{else}}
 <p><em>No runs yet. Configure settings and click Run Now.</em></p>
 {{end}}
+{{end}}
+
+{{define "pending-section"}}
+<div id="pending-section">
+{{if .PendingMovies}}
+<h3>Pending Movies</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Year</th>
+      <th>Rating</th>
+      <th>Queued</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .PendingMovies}}
+    <tr>
+      <td>{{.Title}}</td>
+      <td>{{.Year}}</td>
+      <td>{{.Rating}}</td>
+      <td>{{.AddedAt}}</td>
+      <td style="display:flex; gap:.5rem;">
+        <button
+          hx-post="/movies/{{.ID}}/accept"
+          hx-target="#pending-section"
+          hx-swap="outerHTML"
+          style="margin:0; padding:.3em .8em;"
+        >Accept</button>
+        <button
+          hx-post="/movies/{{.ID}}/reject"
+          hx-target="#pending-section"
+          hx-swap="outerHTML"
+          class="secondary outline"
+          style="margin:0; padding:.3em .8em;"
+        >Reject</button>
+      </td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+</div>
 {{end}}
