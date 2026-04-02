@@ -123,6 +123,11 @@ func (s *Scheduler) run() (int, error) {
 		return 0, fmt.Errorf("fetch rejected movies: %w", err)
 	}
 
+	alreadyRated, err := sc.GetMyRatedTmdbIDs()
+	if err != nil {
+		return 0, fmt.Errorf("fetch own ratings: %w", err)
+	}
+
 	downloadMode := cfg["download_mode"]
 	added := 0
 	for _, r := range ratings {
@@ -133,6 +138,9 @@ func (s *Scheduler) run() (int, error) {
 			continue
 		}
 		if _, exists := rejected[r.TmdbID]; exists {
+			continue
+		}
+		if _, exists := alreadyRated[r.TmdbID]; exists {
 			continue
 		}
 		if downloadMode == "manual" {

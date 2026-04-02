@@ -148,6 +148,28 @@ type ratingsPage struct {
 	} `json:"pagination"`
 }
 
+// GetMyRatedTmdbIDs returns the set of TMDB IDs the authenticated user has already rated.
+func (c *Client) GetMyRatedTmdbIDs() (map[int]struct{}, error) {
+	ids := make(map[int]struct{})
+	page := 1
+	for {
+		var rp ratingsPage
+		if err := c.get(fmt.Sprintf("/ratings?page=%d&limit=50", page), &rp); err != nil {
+			return nil, err
+		}
+		for _, r := range rp.Data {
+			if r.MediaType == "MOVIE" {
+				ids[r.TmdbID] = struct{}{}
+			}
+		}
+		if page >= rp.Pagination.TotalPages {
+			break
+		}
+		page++
+	}
+	return ids, nil
+}
+
 // GetMovieRatingsByUser fetches all MOVIE ratings for the given user ID.
 func (c *Client) GetMovieRatingsByUser(userID string) ([]Rating, error) {
 	var all []Rating
