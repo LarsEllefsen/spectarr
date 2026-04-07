@@ -12,7 +12,7 @@ go build -o spectarr ./cmd/spectarr
 CGO_ENABLED=0 go build -ldflags="-s -w" -o spectarr ./cmd/spectarr
 
 # Run locally (creates ./config/ for SQLite DB and encryption key)
-DATA_DIR=./config go run ./cmd/spectarr
+go run ./cmd/spectarr
 
 # Run Radarr locally for development
 docker-compose -f docker-compose.dev.yml up
@@ -44,7 +44,7 @@ Spectarr polls friends' ratings on Specto (a movie/show ratings service) and add
 | `internal/radarr` | Radarr API client (lookup, add movies, quality profiles, root folders) |
 | `internal/web` | chi router, per-page template rendering, HTMX partial responses, setup wizard |
 
-**Storage:** Single SQLite DB (`$DATA_DIR/spectarr.db`). Tables: `config` (key/value, sensitive fields AES-encrypted), `run_log`, `pending_movies` (manual review queue with poster/IMDB/attribution), `rejected_movies` (permanent skip list). Encryption key at `$DATA_DIR/secret.key`.
+**Storage:** Single SQLite DB (`./config/spectarr.db`). Tables: `config` (key/value, sensitive fields AES-encrypted), `run_log`, `pending_movies` (manual review queue with poster/IMDB/attribution), `rejected_movies` (permanent skip list). Encryption key at `./config/secret.key`.
 
 **SQLite migrations:** New columns are added via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` in `config.Open()` after schema creation — errors are intentionally ignored (column already exists).
 
@@ -56,5 +56,3 @@ Spectarr polls friends' ratings on Specto (a movie/show ratings service) and add
 
 **Distribution:** Docker image built and pushed to `ghcr.io/larsellefsen/spectarr` via GitHub Actions (`.github/workflows/docker.yml`) on every push to `master` (`latest`) and on version tags (`v1.2.3` → `1.2.3` and `1.2`).
 
-**Environment variables:**
-- `DATA_DIR` (default `./data`) — path for the SQLite DB and secret key

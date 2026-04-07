@@ -12,16 +12,13 @@ import (
 )
 
 func main() {
-	dataDir := os.Getenv("DATA_DIR")
-	if dataDir == "" {
-		dataDir = "./config"
-	}
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Fatalf("create data dir: %v", err)
+	configDir := "./config"
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		log.Fatalf("create config dir: %v", err)
 	}
 
-	dbPath := filepath.Join(dataDir, "spectarr.db")
-	store, err := config.Open(dbPath, dataDir)
+	dbPath := filepath.Join(configDir, "spectarr.db")
+	store, err := config.Open(dbPath, configDir)
 	if err != nil {
 		log.Fatalf("open config store: %v", err)
 	}

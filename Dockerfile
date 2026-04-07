@@ -11,5 +11,4 @@ WORKDIR /app
 COPY --from=builder /app/spectarr .
 VOLUME ["/config"]
 EXPOSE 6969
-ENV DATA_DIR=/config
 CMD ["./spectarr"]
