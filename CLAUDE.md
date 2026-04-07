@@ -11,8 +11,8 @@ go build -o spectarr ./cmd/spectarr
 # Production build (matches Dockerfile)
 CGO_ENABLED=0 go build -ldflags="-s -w" -o spectarr ./cmd/spectarr
 
-# Run locally (creates ./data/ for SQLite DB and encryption key)
-DATA_DIR=./data go run ./cmd/spectarr
+# Run locally (creates ./config/ for SQLite DB and encryption key)
+DATA_DIR=./config go run ./cmd/spectarr
 
 # Run Radarr locally for development
 docker-compose -f docker-compose.dev.yml up

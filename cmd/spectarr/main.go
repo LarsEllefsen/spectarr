@@ -14,7 +14,7 @@ import (
 func main() {
 	dataDir := os.Getenv("DATA_DIR")
 	if dataDir == "" {
-		dataDir = "./data"
+		dataDir = "./config"
 	}
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		log.Fatalf("create data dir: %v", err)

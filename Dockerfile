@@ -9,7 +9,7 @@ FROM alpine:3.21
 RUN apk add --no-cache tzdata ca-certificates
 WORKDIR /app
 COPY --from=builder /app/spectarr .
-VOLUME ["/data"]
+VOLUME ["/config"]
 EXPOSE 6969
-ENV DATA_DIR=/data
+ENV DATA_DIR=/config
 CMD ["./spectarr"]

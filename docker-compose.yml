@@ -6,7 +6,7 @@ services:
     ports:
       - "6969:6969"
     volumes:
-      - ./data:/data
+      - ./config:/config
     environment:
       - TZ=Europe/Oslo
-      - DATA_DIR=/data
+      - DATA_DIR=/config
