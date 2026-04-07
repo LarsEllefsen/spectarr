@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	configDir := "./config"
+	configDir := "/config"
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Fatalf("create config dir: %v", err)
 	}
