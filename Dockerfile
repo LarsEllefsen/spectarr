@@ -10,6 +10,6 @@ RUN apk add --no-cache tzdata ca-certificates
 WORKDIR /app
 COPY --from=builder /app/spectarr .
 VOLUME ["/data"]
-EXPOSE 8080
+EXPOSE 6969
 ENV DATA_DIR=/data
 CMD ["./spectarr"]

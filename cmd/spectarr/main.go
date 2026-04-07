@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("init web handler: %v", err)
 	}
 
-	addr := ":8080"
+	addr := ":6969"
 	log.Printf("spectarr listening on http://localhost%s", addr)
 	if err := http.ListenAndServe(addr, handler.Routes()); err != nil {
 		log.Fatalf("http server: %v", err)
